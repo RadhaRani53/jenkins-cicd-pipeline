@@ -4,6 +4,20 @@ Automated CI/CD pipeline that builds a Java Maven application and deploys it to 
 
 ---
 
+## Live Output
+
+### Jenkins Pipeline — All Stages Passed
+![Jenkins Pipeline](screenshots/jenkins-pipeline.png)
+
+> Build #4 completed successfully — Checkout (1s) → Build (11s) → Deploy (441ms)
+
+### Application Running on Tomcat
+![App on Tomcat](screenshots/tomcat-running.png)
+
+> Sample "Hello World" Java app live at `http://13.193.182.84:8081/sample/`
+
+---
+
 ## Architecture
 
 ```
@@ -15,9 +29,9 @@ Developer pushes code to GitHub (master branch)
                 ↓
     Stage 1: Checkout — pulls latest code
                 ↓
-    Stage 2: Build — mvn clean package
+    Stage 2: Build — mvn clean package -DskipTests
                 ↓
-    Stage 3: Deploy — copies .jar/.war to Tomcat
+    Stage 3: Deploy — copies artifact to Tomcat webapps/
                 ↓
       App live on Tomcat (Port 8081)
 ```
@@ -31,89 +45,69 @@ Developer pushes code to GitHub (master branch)
 | AWS EC2 (Ubuntu) | Cloud server hosting Jenkins + Tomcat |
 | Jenkins | CI/CD automation server |
 | GitHub + Webhooks | Source control + automatic build trigger |
-| Maven | Build tool — compiles and packages the Java app |
+| Maven | Build and package Java application |
 | Apache Tomcat 9 | Application server for deployment |
-| Java (simple-java-maven-app) | Sample application used for the pipeline |
 
 ---
 
 ## Pipeline Stages
 
-**Stage 1 — Checkout**
-Jenkins pulls the latest code from the `master` branch of the GitHub repository.
+**Stage 1 — Checkout**  
+Jenkins pulls latest code from the GitHub repository (master branch).
 
-**Stage 2 — Build**
-Maven compiles the code and packages it (`mvn clean package -DskipTests`). Tests are skipped to keep the pipeline fast for demo purposes.
+**Stage 2 — Build**  
+Maven compiles and packages the app using `mvn clean package -DskipTests`.
 
-**Stage 3 — Deploy**
-The compiled `.jar` or `.war` artifact is copied to Tomcat's `webapps/` directory. The `|| true` ensures the pipeline doesn't fail if one file type doesn't exist.
+**Stage 3 — Deploy**  
+Compiled `.jar`/`.war` artifact is copied to Tomcat's `webapps/` directory and served automatically.
 
 ---
 
 ## Setup
 
-### EC2 Instance
-- Ubuntu t2.micro on AWS
-- Security Group inbound rules:
-  - Port 22 — SSH
-  - Port 8080 — Jenkins
-  - Port 8081 — Tomcat
+### EC2 Security Group (Inbound Rules)
+| Port | Purpose |
+|---|---|
+| 22 | SSH access |
+| 8080 | Jenkins dashboard |
+| 8081 | Tomcat application |
 
-### Jenkins Setup
+### Jenkins + Maven + Tomcat Installation
 ```bash
 sudo apt update
 sudo apt install -y openjdk-17-jdk jenkins maven git
 sudo systemctl start jenkins
-# Access at http://EC2-IP:8080
-```
 
-### Tomcat Setup
-```bash
+# Tomcat
 cd /opt
 sudo wget https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.85/bin/apache-tomcat-9.0.85.tar.gz
 sudo tar -xvf apache-tomcat-9.0.85.tar.gz
 sudo mv apache-tomcat-9.0.85 tomcat9
 sudo /opt/tomcat9/bin/startup.sh
-# Access at http://EC2-IP:8081
 ```
 
 ### GitHub Webhook
 - GitHub Repo → Settings → Webhooks → Add webhook
-- Payload URL: `http://YOUR-EC2-IP:8080/github-webhook/`
+- Payload URL: `http://EC2-IP:8080/github-webhook/`
 - Content type: `application/json`
-- Event: Just the push event
-
----
-
-## Screenshots
-
-### Jenkins Pipeline View
-![Pipeline](screenshots/jenkins-pipeline.png)
-
-### Successful Build Console Output
-![Build Success](screenshots/build-success.png)
-
-### Tomcat Running
-![Tomcat](screenshots/tomcat-running.png)
+- Event: Push events only
 
 ---
 
 ## Source App
 
-This pipeline builds the official Jenkins sample app:  
-https://github.com/jenkins-docs/simple-java-maven-app
-
-Forked to: https://github.com/RadhaRani53/simple-java-maven-app
+Pipeline builds the Jenkins official sample Java Maven app:  
+https://github.com/RadhaRani53/simple-java-maven-app
 
 ---
 
 ## Key Learnings
 
 - Installed and configured Jenkins on AWS EC2 from scratch
-- Connected GitHub repo to Jenkins using webhooks for push-triggered builds
+- Connected GitHub to Jenkins using webhooks for automatic push-triggered builds
 - Wrote a 3-stage Declarative Jenkinsfile (Checkout → Build → Deploy)
-- Used `mvn clean package` to compile and package a Java Maven app
-- Deployed build artifacts to Apache Tomcat automatically on each push
+- Deployed Java artifacts to Apache Tomcat automatically on every push
+- Debugged failed builds (#2) and fixed pipeline to achieve stable green builds (#3, #4)
 
 ---
 
